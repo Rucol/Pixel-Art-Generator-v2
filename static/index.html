@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alchemiczna Kuźnia Sprite'ów</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="toolbar" id="categories-toolbar">
+            <span id="loading-status" style="padding:10px; color: lime;">Przygotowywanie składników alchemicznych...</span>
+        </nav>
+
+        <main class="workspace">
+            <div class="canvas-area">
+                <div class="image-border">
+                    <img id="output-image" src="" alt="Podgląd Sprite'a">
+                </div>
+                
+                <div class="selection-container">
+                    <div id="selection-header" onclick="toggleSelectionList()">
+                        <span>Wybrano cech: <span id="selection-count">0</span></span>
+                        <span id="arrow">▼</span>
+                    </div>
+                    <div id="selection-list-details" class="hidden">
+                        </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="reset-btn" class="secondary-btn">RESET</button>
+                <button id="generate-btn" class="generate-btn">GENERATE</button>
+                <button id="random-btn" class="secondary-btn">RANDOM</button>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

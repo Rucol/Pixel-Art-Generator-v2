@@ -1,0 +1,206 @@
+body {
+    margin: 0;
+    background-color: #121212;
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* GÓRNY PASEK */
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    background: #1e1e1e;
+    padding: 10px;
+    gap: 8px;
+    border-bottom: 2px solid #28a745;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.drop-btn {
+    background: #444;
+    color: lime;
+    border: 1px solid #555;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #252525;
+    min-width: 250px;
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #28a745;
+    box-shadow: 0px 10px 20px rgba(0,0,0,0.6);
+    padding: 10px;
+    z-index: 9999;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block !important;
+}
+
+.search-mini {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    background: #000;
+    color: #00ff00;
+    border: 1px solid #444;
+    box-sizing: border-box;
+}
+.controls {
+    display: flex;
+    gap: 15px; /* Odstęp między przyciskami */
+    margin-top: 20px;
+}
+
+.secondary-btn {
+    padding: 10px 25px;
+    background: #333;
+    color: #ccc;
+    border: 1px solid #444;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.secondary-btn:hover {
+    background: #444;
+    color: white;
+    border-color: #666;
+}
+
+#reset-btn:hover {
+    background: #852121; /* Delikatna czerwień przy resecie */
+    border-color: #ff4d4d;
+}
+
+#random-btn:hover {
+    background: #215a85; /* Delikatny niebieski przy losowaniu */
+    border-color: #4da3ff;
+}
+
+.tags-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+}
+
+.tag-item {
+    font-size: 11px;
+    padding: 5px;
+    text-align: left;
+    border-radius: 3px;
+    background: #333;
+    border: 1px solid #444;
+    color: #ccc;
+    cursor: pointer;
+}
+
+.tag-item:hover { background: #444; }
+.tag-item.active {
+    background: #28a745;
+    color: white;
+}
+
+/* OBSZAR ROBOCZY */
+.workspace {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-border {
+    width: 256px;
+    height: 256px;
+    border: 4px solid #333;
+    background: #000;
+    margin-bottom: 5px;
+}
+
+#output-image {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+/* LISTA WYBRANYCH CECH */
+.selection-container {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    width: 256px;
+    margin-bottom: 20px;
+    font-size: 12px;
+}
+
+#selection-header {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #28a745;
+    font-weight: bold;
+    user-select: none;
+}
+
+#selection-header:hover { background: #252525; }
+
+#selection-list-details {
+    padding: 5px 10px;
+    max-height: 150px;
+    overflow-y: auto;
+    border-top: 1px solid #333;
+    background: #161616;
+}
+
+#selection-list-details div {
+    padding: 3px 0;
+    border-bottom: 1px solid #222;
+    color: #aaa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hidden { display: none; }
+
+#arrow { 
+    font-size: 10px;
+    transition: transform 0.3s; 
+}
+
+.rotate { transform: rotate(180deg); }
+
+.generate-btn {
+    padding: 15px 60px;
+    background: #28a745;
+    color: white;
+    border: none;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.generate-btn:hover { background: #218838; }
+.generate-btn:disabled { background: #444; cursor: not-allowed; }
