@@ -25,23 +25,49 @@ A generative artificial intelligence application that creates custom RPG-style p
 * Python 3.10 !
 * Git
 
-### 1. Clone the Repository
+## 1. Clone the Repository
 ```bash
 git clone [https://github.com/Rucol/Pixel-Art-Generator-v2.git](https://github.com/Rucol/Pixel-Art-Generator-v2.git)
 cd Pixel-Art-Generator-v2
 ```
 
-### Create and Activate Virtual Environment
+## 2. Create and Activate Virtual Environment
 ```bash
 python -m venv venv
 ```
-# On windows:
+### On windows:
 ```bash
 venv\Scripts\activate
 ```
-# On Linux/MacOS
+### On Linux/MacOS
 ```bash
 source venv/bin/activate
 ```
+## 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+## 4. Run the Application
+```bash
+uvicorn main:app --reload
+```
+Open your browser and navigate to http://127.0.0.1:8000
+
+## 📁 Project Structure
+main.py - FastAPI server and image processing logic.
+
+model_data/ - Contains the trained .keras model and tags dictionary.
+
+static/ - Web interface files (HTML, CSS, JS).
+
+training/ - Original scripts used for model architecture and training.
+
+requirements.txt - List of necessary Python packages.
+
+## 🧠 About the Model
+The generator was trained on a custom dataset of pixel-art sprites. It uses a Conditional Generative Adversarial Network where the generator is conditioned on a class vector (tags). This allows for precise control over the visual features of the output image.
+
+## Created by Rucol - 2026
+
 
 
