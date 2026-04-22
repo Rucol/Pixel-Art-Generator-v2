@@ -30,3 +30,18 @@ A generative artificial intelligence application that creates custom RPG-style p
 git clone [https://github.com/Rucol/Pixel-Art-Generator-v2.git](https://github.com/Rucol/Pixel-Art-Generator-v2.git)
 cd Pixel-Art-Generator-v2
 ```
+
+### Create and Activate Virtual Environment
+```bash
+python -m venv venv
+```
+# On windows:
+```bash
+venv\Scripts\activate
+```
+# On Linux/MacOS
+```bash
+source venv/bin/activate
+```
+
+
