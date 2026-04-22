@@ -2,7 +2,7 @@
 
 A generative artificial intelligence application that creates custom RPG-style pixel-art characters using a **Conditional GAN (cGAN)**. Users can select specific character traits (tags), and the AI "forges" a unique sprite based on those inputs.
 
-![Project Preview](screenshots/preview.png)
+![Project Preview](https://raw.githubusercontent.com/Rucol/Pixel-Art-Generator-v2/main/screenshots/preview.png)
 ## 🌟 Features
 
 * **Custom Character Forging:** Select gender, hair style, armor type, weapons, and more.
