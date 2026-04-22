@@ -22,7 +22,7 @@ A generative artificial intelligence application that creates custom RPG-style p
 ## 🚀 Installation & Setup
 
 ### Prerequisites
-* Python 3.10+
+* Python 3.10 !
 * Git
 
 ### 1. Clone the Repository
