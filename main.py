@@ -16,8 +16,8 @@ app = FastAPI()
 # --- KONFIGURACJA ŚCIEŻEK ---
 # Ustalenie ścieżki do folderu, w którym znajduje się main.py
 BASE_DIR = pathlib.Path(__file__).parent.resolve()
-MODEL_PATH = BASE_DIR / "generator_model.keras"
-TAGS_PATH = BASE_DIR / "tags_dictionary.json"
+MODEL_PATH = BASE_DIR / "model_data" / "generator_model.keras"
+TAGS_PATH = BASE_DIR / "model_data" / "tags_dictionary.json"
 
 NOISE_DIM = 256
 # --- ŁADOWANIE DANYCH ---
@@ -106,7 +106,7 @@ async def generate_sprite(req: GenerateRequest):
 
 # MONTAŻ PLIKÓW STATYCZNYCH
 # Musi być na samym końcu!
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/", StaticFiles(directory=BASE_DIR / "static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
