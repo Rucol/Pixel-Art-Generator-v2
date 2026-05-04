@@ -1,8 +1,24 @@
+/* 
+   Pixel Art Alchemy Forge - Professional Stylesheet 
+*/
+
+:root {
+    --bg-dark: #121212;
+    --bg-panel: #1e1e1e;
+    --bg-dropdown: #252525;
+    --accent-green: #28a745;
+    --accent-hover: #218838;
+    --text-main: #ffffff;
+    --text-dim: #aaaaaa;
+    --border-color: #333333;
+    --terminal-lime: #00ff00;
+}
+
 body {
     margin: 0;
-    background-color: #121212;
-    color: white;
-    font-family: 'Segoe UI', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .app-container {
@@ -11,14 +27,14 @@ body {
     height: 100vh;
 }
 
-/* GÓRNY PASEK */
+/* --- TOP TOOLBAR --- */
 .toolbar {
     display: flex;
     flex-wrap: wrap;
-    background: #1e1e1e;
+    background: var(--bg-panel);
     padding: 10px;
     gap: 8px;
-    border-bottom: 2px solid #28a745;
+    border-bottom: 2px solid var(--accent-green);
 }
 
 .dropdown {
@@ -33,16 +49,21 @@ body {
     padding: 8px 15px;
     cursor: pointer;
     font-weight: bold;
+    transition: background 0.2s;
+}
+
+.drop-btn:hover {
+    background: #555;
 }
 
 .dropdown-content {
     display: none;
     position: absolute;
-    background-color: #252525;
+    background-color: var(--bg-dropdown);
     min-width: 250px;
     max-height: 500px;
     overflow-y: auto;
-    border: 1px solid #28a745;
+    border: 1px solid var(--accent-green);
     box-shadow: 0px 10px 20px rgba(0,0,0,0.6);
     padding: 10px;
     z-index: 9999;
@@ -57,42 +78,9 @@ body {
     padding: 8px;
     margin-bottom: 10px;
     background: #000;
-    color: #00ff00;
+    color: var(--terminal-lime);
     border: 1px solid #444;
     box-sizing: border-box;
-}
-.controls {
-    display: flex;
-    gap: 15px; /* Odstęp między przyciskami */
-    margin-top: 20px;
-}
-
-.secondary-btn {
-    padding: 10px 25px;
-    background: #333;
-    color: #ccc;
-    border: 1px solid #444;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.secondary-btn:hover {
-    background: #444;
-    color: white;
-    border-color: #666;
-}
-
-#reset-btn:hover {
-    background: #852121; /* Delikatna czerwień przy resecie */
-    border-color: #ff4d4d;
-}
-
-#random-btn:hover {
-    background: #215a85; /* Delikatny niebieski przy losowaniu */
-    border-color: #4da3ff;
 }
 
 .tags-list {
@@ -114,11 +102,11 @@ body {
 
 .tag-item:hover { background: #444; }
 .tag-item.active {
-    background: #28a745;
+    background: var(--accent-green);
     color: white;
 }
 
-/* OBSZAR ROBOCZY */
+/* --- MAIN WORKSPACE --- */
 .workspace {
     flex: 1;
     display: flex;
@@ -127,24 +115,32 @@ body {
     justify-content: center;
 }
 
+.canvas-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 .image-border {
     width: 256px;
     height: 256px;
-    border: 4px solid #333;
+    border: 4px solid var(--border-color);
     background: #000;
     margin-bottom: 5px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
 }
 
 #output-image {
     width: 100%;
     height: 100%;
-    image-rendering: pixelated;
+    /* Crucial for keeping the pixel art crisp */
+    image-rendering: pixelated; 
 }
 
-/* LISTA WYBRANYCH CECH */
+/* --- SELECTION PANEL --- */
 .selection-container {
-    background: #1e1e1e;
-    border: 1px solid #333;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     width: 256px;
     margin-bottom: 20px;
@@ -157,7 +153,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: #28a745;
+    color: var(--accent-green);
     font-weight: bold;
     user-select: none;
 }
@@ -168,14 +164,14 @@ body {
     padding: 5px 10px;
     max-height: 150px;
     overflow-y: auto;
-    border-top: 1px solid #333;
+    border-top: 1px solid var(--border-color);
     background: #161616;
 }
 
 #selection-list-details div {
     padding: 3px 0;
     border-bottom: 1px solid #222;
-    color: #aaa;
+    color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -190,9 +186,16 @@ body {
 
 .rotate { transform: rotate(180deg); }
 
+/* --- CONTROL BUTTONS --- */
+.controls {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
 .generate-btn {
     padding: 15px 60px;
-    background: #28a745;
+    background: var(--accent-green);
     color: white;
     border: none;
     font-size: 20px;
@@ -202,5 +205,33 @@ body {
     transition: background 0.2s;
 }
 
-.generate-btn:hover { background: #218838; }
+.generate-btn:hover { background: var(--accent-hover); }
 .generate-btn:disabled { background: #444; cursor: not-allowed; }
+
+.secondary-btn {
+    padding: 10px 25px;
+    background: #333;
+    color: #ccc;
+    border: 1px solid #444;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.secondary-btn:hover {
+    background: #444;
+    color: white;
+    border-color: #666;
+}
+
+#reset-btn:hover {
+    background: #852121;
+    border-color: #ff4d4d;
+}
+
+#random-btn:hover {
+    background: #215a85;
+    border-color: #4da3ff;
+}
