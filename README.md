@@ -3,6 +3,14 @@
 A generative artificial intelligence application that creates custom RPG-style pixel-art characters using a **Conditional GAN (cGAN)**. Users can select specific character traits (tags), and the AI "forges" a unique sprite based on those inputs.
 
 ![Project Preview](screenshoots/preview.png)
+
+
+## 📊 Training Results
+
+Below is a sample grid generated during the final stages of the training process. It showcases the model's ability to interpret different combinations of tags and maintain consistent pixel-art style.
+
+![Training Grid](screenshoots/training.png)
+
 ## 🌟 Features
 
 * **Custom Character Forging:** Select gender, hair style, armor type, weapons, and more.
