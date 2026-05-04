@@ -17,7 +17,7 @@ import time
 matplotlib.use('Agg')
 
 # --- CONFIGURATION ---
-BATCH_SIZE = 64  # Reduced for stability in deeper architectures
+BATCH_SIZE = 64  
 IMAGE_SIZE = 64
 NOISE_DIM = 256
 BUFFER_SIZE = 2000
