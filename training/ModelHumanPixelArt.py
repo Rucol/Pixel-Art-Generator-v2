@@ -13,10 +13,11 @@ from collections import Counter
 import sys
 import time
 
-matplotlib.use('Agg') # Wymusza renderowanie obrazków w tle
+# Use non-interactive backend for background rendering
+matplotlib.use('Agg')
 
-# --- KONFIGURACJA ---
-BATCH_SIZE = 64  # Zmniejszony dla stabilności przy głębszym modelu
+# --- CONFIGURATION ---
+BATCH_SIZE = 64  # Reduced for stability in deeper architectures
 IMAGE_SIZE = 64
 NOISE_DIM = 256
 BUFFER_SIZE = 2000
@@ -24,48 +25,44 @@ DATA_DIR = Path("dataset_images")
 CSV_PATH = "dataset.csv"
 
 # ==============================================================================
-# 1. PRZYGOTOWANIE DANYCH
+# 1. DATA PREPARATION
 # ==============================================================================
-print("Wczytywanie i filtrowanie pliku CSV...")
+print("Loading and filtering CSV metadata...")
 try:
     df = pd.read_csv(CSV_PATH)
-    print(f"✅ Sukces: Załadowano plik {CSV_PATH}. Znaleziono {len(df)} obrazów w bazie.")
+    print(f"✅ Success: Loaded {CSV_PATH}. Found {len(df)} images in database.")
 except FileNotFoundError:
-    print(f"❌ KRYTYCZNY BŁĄD: Nie znaleziono pliku '{CSV_PATH}'!")
-    print("Upewnij się, że plik dataset.csv znajduje się dokładnie w tym samym folderze co skrypt.")
-    sys.exit(1) # Zatrzymujemy skrypt, nie ma sensu iść dalej
+    print(f"❌ CRITICAL ERROR: Could not find '{CSV_PATH}'!")
+    sys.exit(1)
 except Exception as e:
-    print(f"❌ KRYTYCZNY BŁĄD: Problem z odczytem CSV: {e}")
+    print(f"❌ CRITICAL ERROR: Problem reading CSV: {e}")
     sys.exit(1)
 
-# KROK 1: Zbieramy wszystkie tagi, żeby policzyć ich wystąpienia
+# Step 1: Collect and count all tags
 all_raw_tags = []
 for index, row in df.iterrows():
     tags = [str(val) for val in row[1:] if str(val) != 'none' and pd.notna(val)]
     all_raw_tags.extend(tags)
 
-# Liczymy, ile razy wystąpił każdy tag
 tag_counts = Counter(all_raw_tags)
 total_images = len(df)
 
-# KROK 2: Tworzymy "Białą listę" tagów
-# Zostawiamy tylko te, które występują więcej niż np. 15 razy, ale rzadziej niż na 95% obrazków
+# Step 2: Tag Filtering (White-listing)
+# Keeps tags appearing more than MIN_OCCURRENCES but less than 95% of total images
 MIN_OCCURRENCES = 15
 MAX_OCCURRENCES = total_images * 0.95 
 
 valid_tags = {tag for tag, count in tag_counts.items() if MIN_OCCURRENCES <= count <= MAX_OCCURRENCES}
 
-print(f"Początkowa liczba unikalnych tagów: {len(tag_counts)}")
-print(f"Liczba tagów po odfiltrowaniu skrajności: {len(valid_tags)}")
+print(f"Original unique tags count: {len(tag_counts)}")
+print(f"Tags count after outlier filtering: {len(valid_tags)}")
 
 tags_list = []
 image_paths = []
 
-# KROK 3: Ładowanie właściwe z filtrowaniem
+# Step 3: Loading and local path verification
 for index, row in df.iterrows():
     img_path = DATA_DIR / row['filename']
-    
-    # Bierzemy tylko tagi, które są na naszej białej liście
     tags = [str(val) for val in row[1:] if str(val) != 'none' and pd.notna(val) and str(val) in valid_tags]
     
     if img_path.exists():
@@ -76,22 +73,22 @@ mlb = MultiLabelBinarizer()
 labels_encoded = mlb.fit_transform(tags_list)
 NUM_CLASSES = len(mlb.classes_)
 
+# Exporting tags dictionary for the FastAPI server
 with open('tags_dictionary.json', 'w') as f:
     json.dump(list(mlb.classes_), f)
 
-print(f"Gotowe! Model będzie trenowany na {NUM_CLASSES} wyselekcjonowanych klasach.")
-
+print(f"Ready! Training will proceed with {NUM_CLASSES} selected classes.")
 
 def load_and_preprocess_data(path, label):
+    """Loads, decodes and normalizes images to [-1, 1] range."""
     image = tf.io.read_file(path)
     image = tf.image.decode_png(image, channels=4) 
-    
     image = tf.cast(image, tf.float32)
     
+    # Process alpha channel for background replacement
     alpha = image[:, :, 3:] / 255.0 
     rgb = image[:, :, :3]
-    
-    bg = tf.zeros_like(rgb) 
+    bg = tf.zeros_like(rgb) # Solid black background
     
     image = rgb * alpha + bg * (1.0 - alpha)
     image = (image / 127.5) - 1.0 
@@ -99,15 +96,17 @@ def load_and_preprocess_data(path, label):
     
     return image, label
 
+# Create TensorFlow Dataset pipeline
 dataset = tf.data.Dataset.from_tensor_slices((image_paths, labels_encoded))
 dataset = dataset.map(load_and_preprocess_data, num_parallel_calls=tf.data.AUTOTUNE)
 train_dataset = dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
 
 # ==============================================================================
-# 2. ARCHITEKTURA MODELU (Functional API - cGAN)
+# 2. MODEL ARCHITECTURE (cGAN - Functional API)
 # ==============================================================================
 
 def res_block(x, filters):
+    """Residual Block for stabilizing deeper layers."""
     shortcut = x
     x = keras.layers.Conv2D(filters, 3, padding='same')(x)
     x = keras.layers.BatchNormalization()(x)
@@ -117,23 +116,20 @@ def res_block(x, filters):
     x = keras.layers.add([shortcut, x])
     return x
 
-# --- NOWA, LEPSZA METODA TRENOWANIA DLA GANÓW (WGAN-GP) LUB ZMIENIONA ARCHITEKTURA ---
-
 def make_generator_model(num_classes):
-    # Dwa ODDZIELNE wejścia
+    """Creates the Generator (Forge) - maps noise and tags to image."""
     noise_input = keras.Input(shape=(NOISE_DIM,))
     label_input = keras.Input(shape=(num_classes,))
     
-    # Przekształcamy tagi w potężny wektor wpływu (512)
+    # Powerful tag embedding (512-dim influence vector)
     label_embedding = keras.layers.Dense(512)(label_input) 
     label_embedding = keras.layers.LeakyReLU(0.2)(label_embedding)
     
-    # Szum też musi mieć silną reprezentację (zmieniamy z 256 na 512, by miały równe szanse)
+    # Initial noise representation
     x_noise = keras.layers.Dense(8 * 8 * 512, use_bias=False)(noise_input)
     x_noise = keras.layers.Reshape((8, 8, 512))(x_noise)
 
-    # --- ZMIANA KRYTYCZNA: Zamiast łączyć na początku, "nakładamy" tagi na szum ---
-    # Tagi stają się filtrem (mnożnikiem) dla szumu
+    # Conditioning: Applying tags as a multiplicative filter over noise
     label_filter = keras.layers.Dense(512, activation='sigmoid')(label_embedding)
     label_filter = keras.layers.Reshape((1, 1, 512))(label_filter) 
     
@@ -141,51 +137,40 @@ def make_generator_model(num_classes):
     x = keras.layers.BatchNormalization()(x)
     x = keras.layers.LeakyReLU(0.2)(x)
 
-    # 8x8 -> 16x16
-    x = keras.layers.UpSampling2D(interpolation='nearest')(x)
-    x = keras.layers.Conv2D(256, 3, padding='same')(x)
-    x = res_block(x, 256)
-    x = keras.layers.LeakyReLU(0.2)(x)
+    # Progressive Upsampling: 8x8 -> 16x16 -> 32x32 -> 64x64
+    upsampling_layers = [256, 128]
+    for filters in upsampling_layers:
+        x = keras.layers.UpSampling2D(interpolation='nearest')(x)
+        x = keras.layers.Conv2D(filters, 3, padding='same')(x)
+        x = res_block(x, filters)
+        x = keras.layers.LeakyReLU(0.2)(x)
 
-    # 16x16 -> 32x32
-    x = keras.layers.UpSampling2D(interpolation='nearest')(x)
-    x = keras.layers.Conv2D(128, 3, padding='same')(x)
-    x = res_block(x, 128)
-    x = keras.layers.LeakyReLU(0.2)(x)
-
-    # 32x32 -> 64x64
     x = keras.layers.UpSampling2D(interpolation='nearest')(x)
     x = keras.layers.Conv2D(64, 3, padding='same')(x)
     
-    # Ostatnia warstwa - wygenerowanie 3 kolorów RGB z mocną aktywacją tanh
+    # Final output layer (RGB) with tanh activation
     x = keras.layers.Conv2D(3, 3, padding='same', activation='tanh')(x)
 
     return keras.Model([noise_input, label_input], x, name="Generator")
 
 def make_discriminator_model(num_classes):
+    """Creates the Discriminator (Judge) - validates image authenticity."""
     image_input = keras.Input(shape=(IMAGE_SIZE, IMAGE_SIZE, 3))
     label_input = keras.Input(shape=(num_classes,))
 
-    # Dodanie szumu na wejściu (ułatwia naukę struktury)
+    # Add noise to input for training stability
     x = keras.layers.GaussianNoise(0.1)(image_input)
 
-    x = keras.layers.Conv2D(64, 3, strides=2, padding='same')(x) 
-    x = keras.layers.LeakyReLU(0.2)(x)
-    x = keras.layers.Dropout(0.3)(x)
-
-    x = keras.layers.Conv2D(128, 3, strides=2, padding='same')(x) 
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.LeakyReLU(0.2)(x)
-    x = keras.layers.Dropout(0.3)(x)
-
-    x = keras.layers.Conv2D(256, 3, strides=2, padding='same')(x) 
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.LeakyReLU(0.2)(x)
-    x = keras.layers.Dropout(0.3)(x)
+    conv_layers = [64, 128, 256]
+    for filters in conv_layers:
+        x = keras.layers.Conv2D(filters, 3, strides=2, padding='same')(x) 
+        x = keras.layers.BatchNormalization() if filters > 64 else lambda y: y
+        x = keras.layers.LeakyReLU(0.2)(x)
+        x = keras.layers.Dropout(0.3)(x)
 
     x = keras.layers.Flatten()(x)
     
-    # Warunkowanie
+    # Conditioning logic
     label_feat = keras.layers.Dense(512)(label_input)
     label_feat = keras.layers.LeakyReLU(0.2)(label_feat)
     
@@ -199,20 +184,20 @@ def make_discriminator_model(num_classes):
 generator = make_generator_model(NUM_CLASSES)
 discriminator = make_discriminator_model(NUM_CLASSES)
 
-# TTUR (Two-Time Scale Update Rule) - Dyskryminator uczy się nieco szybciej
+# TTUR (Two-Time Scale Update Rule) - Discriminator learns slightly slower/faster for stability
 generator_optimizer = keras.optimizers.Adam(learning_rate=0.0002, beta_1=0.5)
 discriminator_optimizer = keras.optimizers.Adam(learning_rate=0.0001, beta_1=0.5)
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=False) 
 
 # ==============================================================================
-# 3. TRENOWANIE
+# 3. TRAINING LOGIC
 # ==============================================================================
 
 def generator_loss(fake_output):
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
 def discriminator_loss(real_output, fake_output):
-    # One-sided label smoothing (0.9 zamiast 1.0)
+    # One-sided label smoothing (0.9 instead of 1.0) for stability
     real_loss = cross_entropy(tf.ones_like(real_output) * 0.9, real_output)
     fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
     return real_loss + fake_loss
@@ -221,6 +206,7 @@ preview_labels = labels_encoded[:16]
 preview_noise = tf.random.normal([16, NOISE_DIM])
 
 def save_images(model, epoch, folder="generated_images"):
+    """Generates and saves a grid of sample images during training."""
     os.makedirs(folder, exist_ok=True)
     predictions = model([preview_noise, tf.convert_to_tensor(preview_labels, dtype=tf.float32)], training=False)
     
@@ -253,60 +239,44 @@ def train_step(images, labels):
     
     return gen_loss, disc_loss, tf.reduce_mean(real_output), tf.reduce_mean(fake_output)
 
-# Reszta funkcji (train, summary_writer) pozostaje bez zmian strukturalnych, 
-# ale będzie korzystać z nowej architektury.
-
-current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-train_log_dir = 'logs/gradient_tape/' + current_time + '/train'
-train_summary_writer = tf.summary.create_file_writer(train_log_dir)
-
 def train(dataset, epochs, checkpoint_path="generator_checkpoint"):
     os.makedirs(checkpoint_path, exist_ok=True)
-    # Zmieniamy format dla obu plików na .weights.h5, to standard Keras 3
     gen_checkpoint_file = os.path.join(checkpoint_path, "generator.weights.h5")
     disc_checkpoint_file = os.path.join(checkpoint_path, "discriminator.weights.h5")
     
-    # 1. Poprawione wczytywanie
+    # Attempt to load weights from previous sessions
     if os.path.exists(gen_checkpoint_file) and os.path.exists(disc_checkpoint_file):
         try:
-            # Wczytujemy TYLKO wagi, bo struktura jest już zbudowana w Pythonie
             generator.load_weights(gen_checkpoint_file)
             discriminator.load_weights(disc_checkpoint_file)
-            print("✅ Sukces: Wczytano zapisane wagi z poprzedniego treningu.")
+            print("✅ Success: Loaded existing weights from checkpoint.")
         except ValueError as e:
-            print(f"❌ UWAGA: Błąd wczytywania wag ({e}). Zaczynamy od zera.")
+            print(f"❌ WARNING: Error loading weights ({e}). Starting from scratch.")
     else:
-        print("Brak zapisanych wag. Zaczynamy trening od zera.")
+        print("No checkpoints found. Starting fresh training session.")
     
-    print("Rozpoczynam trenowanie...")
-    preview_labels_tensor = tf.convert_to_tensor(preview_labels, dtype=tf.float32)
-    
+    print("Beginning training process...")
     for epoch in range(epochs):
         for image_batch, label_batch in dataset:
             gen_loss, disc_loss, d_real, d_fake = train_step(image_batch, label_batch)
         
-        print(f"Epoka {epoch + 1} | Gen: {gen_loss:.4f} | Disc: {disc_loss:.4f} | D_Real: {d_real:.4f} | D_Fake: {d_fake:.4f}")
+        print(f"Epoch {epoch + 1} | Gen Loss: {gen_loss:.4f} | Disc Loss: {disc_loss:.4f} | D_Real: {d_real:.4f} | D_Fake: {d_fake:.4f}")
         
+        # Periodic saves and monitoring
         if (epoch + 1) % 1 == 0:
             save_images(generator, epoch + 1)
-            
-            # 1. Zapisujemy same wagi w dotychczasowym folderze (żeby nie zepsuć wczytywania przy restarcie)
             generator.save_weights(gen_checkpoint_file)
             discriminator.save_weights(disc_checkpoint_file)
             
-            # --- NOWOŚĆ: ZAPIS CAŁEGO MODELU DO TWOJEGO FOLDERU ---
-            # Dodajemy 'r' przed ścieżką, aby Windows poprawnie odczytał ukośniki
+            # Export full model for production use
             export_dir = r"C:\Users\rucki\Desktop\Portfolio Python\Pixel-Art-AI-Generator\Model"
-            
-            # Upewniamy się, że ten folder na pulpicie istnieje (jeśli nie, Python go stworzy)
             os.makedirs(export_dir, exist_ok=True)
-            
             full_model_path = os.path.join(export_dir, "generator_full.keras")
             generator.save(full_model_path)
             
-            print(f"💾 Zapisano wagi (lokalnie) oraz PEŁNY MODEL ({full_model_path}) po epoce {epoch + 1}.")
-            
-            print("❄️ Przerwa na chłodzenie GPU... (30 sekund)")
+            print(f"💾 Saved full model to {full_model_path} after epoch {epoch + 1}.")
+            print("❄️ Cooling down GPU... (30s break)")
             time.sleep(30)
 
-train(train_dataset, 500) # Zwiększono liczbę epok dla głębszego modelu
+# Run the training loop
+train(train_dataset, 500)
