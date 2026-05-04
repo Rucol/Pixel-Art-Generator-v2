@@ -1,26 +1,39 @@
+/**
+ * Pixel Art Generator - Logic Controller
+ */
+
 let selectedTags = new Set();
 let allTags = [];
 
-// Słownik kategorii - dopasuj nazwy do swoich tagów w JSON
+/**
+ * Category dictionary - maps JSON tags to UI dropdowns.
+ * Used for grouping and exclusion logic.
+ */
 const CATEGORIES = {
-    "SEX": ["male", "female"],
+    "GENDER": ["male", "female"],
     "HEAD": ["head_", "hair_"],
     "BODY": ["body_", "chest_", "torso_"],
     "ARMS": ["arms_", "hands_"],
     "LEGS": ["legs_", "feet_"],
     "WEAPON": ["weapon_", "sword_", "staff_", "bow_"],
     "SHIELD": ["shield_"],
-    "INNE": [] // Reszta trafi tutaj
+    "OTHER": [] // Catch-all for remaining tags
 };
 
-// Tagi, które zostaną użyte, jeśli użytkownik nie wybierze nic z danej kategorii
+/**
+ * Default tags used if the user leaves a core category empty.
+ * Ensures the GAN model always receives a coherent character base.
+ */
 const DEFAULTS = [
-    "male",           // Domyślna płeć
-    "body_standard",  // Domyślny korpus
-    "head_standard",  // Domyślna głowa
-    "legs_pants"      // Domyślne nogi
+    "male",           // Default gender
+    "body_standard",  // Default torso
+    "head_standard",  // Default head
+    "legs_pants"      // Default legs
 ];
 
+/**
+ * Fetches available tags from the server and initializes the UI toolbar.
+ */
 async function loadTags() {
     try {
         const response = await fetch('/tags');
@@ -28,10 +41,11 @@ async function loadTags() {
         const toolbar = document.getElementById('categories-toolbar');
         document.getElementById('loading-status').style.display = 'none';
 
-        // Grupowanie tagów
+        // Initialize grouped object
         const grouped = {};
         Object.keys(CATEGORIES).forEach(cat => grouped[cat] = []);
         
+        // Group tags based on CATEGORIES keywords
         allTags.forEach((tag, index) => {
             let found = false;
             for (const [cat, keywords] of Object.entries(CATEGORIES)) {
@@ -41,10 +55,10 @@ async function loadTags() {
                     break;
                 }
             }
-            if (!found) grouped["INNE"].push({ tag, index });
+            if (!found) grouped["OTHER"].push({ tag, index });
         });
 
-        // Tworzenie menu dropdown dla każdej kategorii
+        // Generate dropdown UI for each category
         Object.entries(grouped).forEach(([catName, tags]) => {
             if (tags.length === 0) return;
 
@@ -53,7 +67,7 @@ async function loadTags() {
             dropdown.innerHTML = `
                 <button class="drop-btn">${catName} ▾</button>
                 <div class="dropdown-content">
-                    <input type="text" class="search-mini" placeholder="Szukaj..." oninput="filterTags(this)">
+                    <input type="text" class="search-mini" placeholder="Search..." oninput="filterTags(this)">
                     <div class="tags-list"></div>
                 </div>
             `;
@@ -62,7 +76,6 @@ async function loadTags() {
             tags.forEach(item => {
                 const btn = document.createElement('div');
                 btn.className = 'tag-item';
-                // Dodajemy atrybut, aby łatwo znaleźć przycisk podczas losowania
                 btn.setAttribute('data-index', item.index); 
                 btn.textContent = item.tag.replace(/_/g, ' ');
                 btn.onclick = () => toggleTag(item.index, btn, item.tag);
@@ -72,44 +85,48 @@ async function loadTags() {
             toolbar.appendChild(dropdown);
         });
     } catch (e) {
-        console.error("Błąd ładowania tagów:", e);
+        console.error("Error loading tags:", e);
     }
 }
 
+/**
+ * Toggles a tag selection. Includes exclusion logic for categories 
+ * (e.g., selecting 'female' will deselect 'male').
+ * 
+ * @param {number} index - Index of the tag in allTags array.
+ * @param {HTMLElement} element - The DOM element of the tag button.
+ * @param {string} tagName - String identifier of the tag.
+ */
 function toggleTag(index, element, tagName) {
     const details = document.getElementById('selection-list-details');
 
-    // 1. Znajdź kategorię, do której należy ten tag
+    // 1. Identify category for exclusion logic
     const categoryKey = Object.keys(CATEGORIES).find(key => 
         CATEGORIES[key].some(keyword => tagName.includes(keyword))
     );
 
-    // 2. Jeśli tag jest już wybrany - po prostu go usuń (odznaczanie)
+    // 2. Handle deselection
     if (selectedTags.has(index)) {
         selectedTags.delete(index);
         element.classList.remove('active');
         document.getElementById(`selected-${index}`)?.remove();
     } 
     else {
-        // 3. LOGIKA WYKLUCZANIA: Jeśli to kategoria inna niż "INNE"
-        if (categoryKey && categoryKey !== "INNE") {
-            // Szukamy wszystkich już wybranych tagów z TEJ SAMEJ kategorii
+        // 3. EXCLUSION LOGIC: Remove existing selection from the same category
+        if (categoryKey && categoryKey !== "OTHER") {
             selectedTags.forEach(selectedIdx => {
                 const nameOfSelected = allTags[selectedIdx];
                 const isSameCategory = CATEGORIES[categoryKey].some(k => nameOfSelected.includes(k));
 
                 if (isSameCategory) {
-                    // Usuwamy poprzedni wybór z tej kategorii
                     selectedTags.delete(selectedIdx);
-                    // Usuwamy podświetlenie z przycisku w HTML
                     document.querySelector(`.tag-item[data-index="${selectedIdx}"]`)?.classList.remove('active');
-                    // Usuwamy z listy tekstowej
                     document.getElementById(`selected-${selectedIdx}`)?.remove();
                 }
             });
         }
 
-        // 4. Dodaj nowy wybór
+        // 4. Finalize new selection
         selectedTags.add(index);
         element.classList.add('active');
         const item = document.createElement('div');
@@ -118,11 +135,14 @@ function toggleTag(index, element, tagName) {
         details.appendChild(item);
     }
     
-    // Aktualizacja licznika
+    // Update UI counter
     document.getElementById('selection-count').textContent = selectedTags.size;
 }
 
-// Funkcja wyszukiwania wewnątrz kategorii
+/**
+ * Filters tags within a dropdown based on search input.
+ * @param {HTMLInputElement} input - The search bar element.
+ */
 window.filterTags = (input) => {
     const filter = input.value.toLowerCase();
     const items = input.nextElementSibling.querySelectorAll('.tag-item');
@@ -131,7 +151,9 @@ window.filterTags = (input) => {
     });
 };
 
-// Funkcja rozwijania listy wybranych
+/**
+ * Expands or collapses the list of currently selected traits.
+ */
 window.toggleSelectionList = () => {
     const list = document.getElementById('selection-list-details');
     const arrow = document.getElementById('arrow');
@@ -139,24 +161,24 @@ window.toggleSelectionList = () => {
     arrow.classList.toggle('rotate');
 };
 
-// --- FUNKCJA RESETU ---
+/**
+ * Clears all current selections and resets the UI.
+ */
 function resetSelection() {
     selectedTags.clear();
-    // Czyścimy podświetlenia przycisków
     document.querySelectorAll('.tag-item').forEach(el => el.classList.remove('active'));
-    // Czyścimy listę tekstową
     document.getElementById('selection-list-details').innerHTML = '';
-    // Zerujemy licznik
     document.getElementById('selection-count').textContent = '0';
 }
 
 document.getElementById('reset-btn').onclick = resetSelection;
 
-// --- FUNKCJA RANDOM ---
+/**
+ * Randomizes character traits. Selects 3-6 unique tags across categories.
+ */
 document.getElementById('random-btn').onclick = () => {
     resetSelection();
 
-    // Losujemy od 3 do 6 unikalnych tagów
     const countToSelect = Math.floor(Math.random() * 4) + 3;
     const chosenIndices = new Set();
 
@@ -165,39 +187,32 @@ document.getElementById('random-btn').onclick = () => {
         chosenIndices.add(randomIndex);
     }
 
-    // Aktywujemy wylosowane tagi
     chosenIndices.forEach(index => {
         const tagName = allTags[index];
-        // Szukamy przycisku w DOM po atrybucie data-index
         const btn = document.querySelector(`.tag-item[data-index="${index}"]`);
         
-        // Jeśli przycisk istnieje w menu, używamy toggleTag, by zaktualizować UI
         if (btn) {
             toggleTag(index, btn, tagName);
         } else {
-            // Jeśli tag nie jest w żadnej kategorii (mało prawdopodobne), dodajemy go tylko do Setu
             selectedTags.add(index);
         }
     });
 };
 
-// Przycisk GENERATE
+/**
+ * Collects selected tags, applies defaults, and sends a request to the GAN model.
+ */
 document.getElementById('generate-btn').onclick = async () => {
     const btn = document.getElementById('generate-btn');
     btn.disabled = true;
-    btn.textContent = "WYKUWANIE...";
+    btn.textContent = "FORGING...";
 
     try {
-        // 1. Tworzymy kopię wybranych indeksów
         let finalIndices = new Set(selectedTags);
 
-        // 2. Sprawdzamy, czy wybrano kluczowe elementy (Płeć, Głowa, Ciało, Nogi)
-        // Jeśli nie, dodajemy domyślne indeksy
+        // Fill in missing core categories with DEFAULTS
         DEFAULTS.forEach(defaultTagName => {
             const defaultIndex = allTags.indexOf(defaultTagName);
-            
-            // Szukamy, czy użytkownik wybrał już cokolwiek z tej kategorii
-            // (np. jeśli default to 'male', sprawdzamy czy wybrano płeć)
             const categoryKey = Object.keys(CATEGORIES).find(key => 
                 CATEGORIES[key].some(keyword => defaultTagName.includes(keyword))
             );
@@ -207,13 +222,12 @@ document.getElementById('generate-btn').onclick = async () => {
                 return CATEGORIES[categoryKey].some(k => name.includes(k));
             });
 
-            // Jeśli kategoria jest pusta i tag domyślny istnieje w bazie - dodaj go
             if (!hasCategorySelected && defaultIndex !== -1) {
                 finalIndices.add(defaultIndex);
             }
         });
 
-        // 3. Wysyłamy wzbogaconą listę tagów
+        // Request generation from FastAPI backend
         const response = await fetch('/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -225,7 +239,7 @@ document.getElementById('generate-btn').onclick = async () => {
             document.getElementById('output-image').src = `data:image/png;base64,${data.image}`;
         }
     } catch (err) {
-        alert("Błąd alchemiczny!");
+        alert("Alchemical failure! Check console for details.");
         console.error(err);
     } finally {
         btn.disabled = false;
@@ -233,4 +247,5 @@ document.getElementById('generate-btn').onclick = async () => {
     }
 };
 
+// Initial load
 loadTags();
