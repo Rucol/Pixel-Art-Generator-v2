@@ -1,30 +1,31 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alchemiczna Kuźnia Sprite'ów</title>
+    <title>Pixel Art Generator</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app-container">
         <nav class="toolbar" id="categories-toolbar">
-            <span id="loading-status" style="padding:10px; color: lime;">Przygotowywanie składników alchemicznych...</span>
+            <span id="loading-status" style="padding:10px; color: lime;">Preparing ingredients...</span>
         </nav>
 
         <main class="workspace">
             <div class="canvas-area">
                 <div class="image-border">
-                    <img id="output-image" src="" alt="Podgląd Sprite'a">
+                    <img id="output-image" src="" alt="Sprite Preview">
                 </div>
                 
                 <div class="selection-container">
                     <div id="selection-header" onclick="toggleSelectionList()">
-                        <span>Wybrano cech: <span id="selection-count">0</span></span>
+                        <span>Selected traits: <span id="selection-count">0</span></span>
                         <span id="arrow">▼</span>
                     </div>
                     <div id="selection-list-details" class="hidden">
-                        </div>
+                        <!-- Selected traits will be listed here -->
+                    </div>
                 </div>
             </div>
 
